@@ -42,8 +42,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-ros-base=0.10.0-1* \
     && rm -rf /var/lib/apt/lists/*
 
-ADD ros_entrypoint.sh /
-RUN chmod a+x ros_entrypoint.sh
+
 RUN mkdir -p ros2_ws/src
 RUN mkdir -p ros2_ws/launch/qos
 COPY vehicle_interfaces/ /ros2_ws/src/
