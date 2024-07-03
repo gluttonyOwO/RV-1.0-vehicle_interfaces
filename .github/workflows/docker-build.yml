@@ -15,7 +15,7 @@ jobs:
         run: |
             ls vehicle_interfaces
             cp ./vehicle_interfaces/Dockerfile ./
-            cp ./vehicle_interfaces/Dockerfile ./vehicle_interfaces/requirements_apt.txt
+            cp ./vehicle_interfaces/requirement_pip.txt  ./
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
