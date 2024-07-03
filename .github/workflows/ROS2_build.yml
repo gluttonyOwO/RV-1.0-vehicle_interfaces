@@ -1,5 +1,4 @@
 name: ROS2 humble Linux CI
-
 on:
   push:
     branches: [ "master" ]
