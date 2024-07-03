@@ -43,8 +43,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 
 RUN mkdir -p ros2_ws/src
-RUN mkdir -p ros2_ws/launch/qos
-COPY vehicle_interfaces/ /ros2_ws/src/
+RUN mkdir -p ros2_ws/launch/qos/
+COPY vehicle_interfaces/ /ros2_ws/src/vehicle_interfaces/
 WORKDIR /ros2_ws
 
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh && colcon build
