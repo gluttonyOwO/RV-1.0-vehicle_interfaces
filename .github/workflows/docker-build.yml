@@ -10,11 +10,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          path: vehicle_insterfaces
+          path: vehicle_interfaces
       - name: ls
         run: |
-            ls vehicle_insterfaces
-            cp ./vehicle_insterfaces/Dockerfile ./
+            ls vehicle_interfaces
+            cp ./vehicle_interfaces/Dockerfile ./
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
