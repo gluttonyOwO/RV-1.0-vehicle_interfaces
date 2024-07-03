@@ -21,19 +21,16 @@ jobs:
           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
           sudo apt update
           sudo apt upgrade
-          sudo apt install ros-humble-desktop
           sudo apt install ros-humble-ros-base
-          sudo apt install ros-dev-tools
           sudo apt-get install --no-install-recommends -y $(cat requirement_apt.txt) | xargs
-    - name: Cache ROS2 layers
-      uses: actions/cache@v2
-      with:
-          path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-
     - name: Build
       run: |
           cd ros2_ws
           source /opt/ros/humble/setup.bash && colcon build --symlink-install
-
+          cd .
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: dist-without-markdown
+        path: ros2_ws
+              
