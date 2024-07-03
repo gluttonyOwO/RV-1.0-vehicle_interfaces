@@ -46,7 +46,7 @@ ADD ros_entrypoint.sh /
 RUN chmod a+x ros_entrypoint.sh
 RUN mkdir -p ros2_ws/src
 RUN mkdir -p ros2_ws/launch/qos
-COPY vehicle_interfaces/ /ros2_ws/src/vehicle_interfaces/
+COPY vehicle_interfaces/ /ros2_ws/src/
 WORKDIR /ros2_ws
 
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh && colcon build
