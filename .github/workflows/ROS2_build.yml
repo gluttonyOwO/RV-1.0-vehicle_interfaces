@@ -22,6 +22,7 @@ jobs:
           sudo apt update
           sudo apt upgrade
           sudo apt install ros-humble-ros-base
+          sudo apt install ros-dev-tools
           sudo apt-get install --no-install-recommends -y $(cat requirement_apt.txt) | xargs
     - name: Build
       run: |
