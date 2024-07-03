@@ -1,0 +1,50 @@
+name: Deploy Production arm
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+jobs:
+  build-and-push-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: vehicle_insterfaces
+      - name: ls
+        run: |
+            ls vehicle_insterfaces
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+      - name: Build and push
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ./Dockerfile
+          push: False
+          load: true
+          tags: gluttony/vehicle_interfaces:${{ github.run_number }}
+          platforms: linux/arm64/v8
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+          run: ls
+      - uses: shrink/actions-docker-extract@v3
+        id: extract
+        with:
+          image: gluttony/vehicle_interfaces:${{ github.run_number }}
+          path: /ros2_ws
+          destination: dist
+      - name: Upload Dist
+        uses: actions/upload-artifact@v3
+        with:
+          name: ros2_ws_ubuntu_arm64
+          path: dist
