@@ -22,8 +22,8 @@ RUN apt-get update
 RUN apt-get install --no-install-recommends -y $(cat requirement_apt.txt) | xargs
 
 
-ADD requirement_pip.txt /
-RUN pip install -r requirement_pip.txt
+ADD requirements_apt.txt /
+RUN pip install -r requirements_apt.txt
 
 # bootstrap rosdep
 RUN rosdep init && \
