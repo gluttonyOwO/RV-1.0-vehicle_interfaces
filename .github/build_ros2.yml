@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+          path: ros2_ws/src/vehicle_insterfaces
     - name: Install Ros2
       run: |
           sudo apt install software-properties-common
@@ -26,8 +28,15 @@ jobs:
           sudo apt install ros-humble-ros-base
           sudo apt install ros-dev-tools
           sudo apt-get install --no-install-recommends -y $(cat requirement_apt.txt) | xargs
-    - name: Env setting
-      run: source /opt/ros/humble/setup.bash
+    - name: Cache ROS2 layers
+      uses: actions/cache@v2
+      with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
     - name: Build
-      run: colcon build
+      run: |
+          cd ros2_ws
+          source /opt/ros/humble/setup.bash && colcon build --symlink-install
 
