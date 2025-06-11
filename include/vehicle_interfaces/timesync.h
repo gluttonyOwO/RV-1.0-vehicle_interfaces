@@ -7,6 +7,9 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <fstream>
+#include <iomanip>
+#include <ctime>
 
 #include "rclcpp/rclcpp.hpp"
 #include "vehicle_interfaces/timer.h"
@@ -33,6 +36,10 @@ namespace vehicle_interfaces
 class TimeSyncNode : virtual public rclcpp::Node
 {
 private:
+    // Log file for time sync
+    std::ofstream timesyncLogFile_;
+    std::mutex logFileLock_;
+
     // Time sync value
     std::shared_ptr<rclcpp::Duration> correctDuration_;
     std::atomic<uint8_t> timeStampType_;
@@ -170,7 +177,35 @@ public:
 
         this->clientNode_ = rclcpp::Node::make_shared(nodeName + "_timesync_client");
         this->client_ = this->clientNode_->create_client<vehicle_interfaces::srv::TimeSync>(timeSyncServiceName);
+        
 
+        // 取得當天日期：yyyyMMdd
+        auto t = std::time(nullptr);
+        std::tm tm_buf;
+        #if defined(_WIN32)
+            localtime_s(&tm_buf, &t);
+        #else
+            localtime_r(&t, &tm_buf);
+        #endif
+        std::ostringstream oss;
+        oss << std::put_time(&tm_buf, "%Y%m%d");
+        std::string dateStr = oss.str();
+
+        // 建立資料夾
+        std::string folderPath = "./" + dateStr;
+        std::error_code ec;
+        std::filesystem::create_directories(folderPath, ec);
+        if (ec) {
+            RCLCPP_WARN(this->get_logger(), "[TimeSyncNode] Failed to create directory: %s", folderPath.c_str());
+        }
+
+
+        std::string logFileName = folderPath + "/" + nodeName + "_timesync_client.csv";
+        this->timesyncLogFile_.open(logFileName, std::ios::out | std::ios::app);
+        this->timesyncLogFile_.open(logFileName, std::ios::out | std::ios::app);
+        if (this->timesyncLogFile_.is_open()) {
+            this->timesyncLogFile_ << "nodeName,request_time,send_time,response_time,now_time,offset_ns\n";
+        }
         this->correctDuration_ = std::make_shared<rclcpp::Duration>(0, 0);
         this->timeStampType_ = vehicle_interfaces::msg::Header::STAMPTYPE_NO_SYNC;
         this->timeSyncPeriod_ = std::chrono::duration<double, std::milli>(timeSyncPeriod_ms);
@@ -195,7 +230,8 @@ public:
         if (this->exitF_)
             return;
         this->exitF_ = true;
-
+        if (this->timesyncLogFile_.is_open())
+            this->timesyncLogFile_.close();
         this->enableFuncF_ = false;
     }
 
@@ -231,13 +267,24 @@ public:
                 rclcpp::Time sendTime = response->request_time;
                 if ((nowTime - sendTime).nanoseconds() >  this->timeSyncAccuracy_.count())// If travel time > accuracy, re-sync
                     return false;
-
+                rclcpp::Duration offset = refTime - sendTime;
+                std::lock_guard<std::mutex> _logLock(this->logFileLock_);
+                if (this->timesyncLogFile_.is_open()) {
+                    this->timesyncLogFile_
+                        << this->clientNode_->get_name() << ","
+                        << request->request_time.seconds() << ","
+                        << sendTime.seconds() << ","
+                        << response->response_time.seconds() << ","
+                        << nowTime.seconds() << ","
+                        << offset.nanoseconds() << "\n";
+                }
                 rclcpp::Time refTime = (rclcpp::Time)response->response_time - (nowTime - sendTime) * 0.5;
                 this->timeStampType_ = response->response_code;
                 if (this->timeStampType_ == vehicle_interfaces::msg::Header::STAMPTYPE_NO_SYNC)
                     throw vehicle_interfaces::msg::Header::STAMPTYPE_NO_SYNC;
 
                 this->_safeSharedPtrSave(this->correctDuration_, refTime - sendTime, this->correctDurationLock_);
+
                 this->isSyncF_ = true;
                 // RCLCPP_INFO(this->get_logger(), "[TimeSyncNode::syncTime] Time sync succeed.");
                 return true;
