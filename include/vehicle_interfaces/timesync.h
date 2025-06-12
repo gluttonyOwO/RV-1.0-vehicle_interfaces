@@ -201,10 +201,11 @@ public:
 
 
         std::string logFileName = folderPath + "/" + nodeName + "_timesync_client.csv";
-        this->timesyncLogFile_.open(logFileName, std::ios::out | std::ios::app);
+
         this->timesyncLogFile_.open(logFileName, std::ios::out | std::ios::app);
         if (this->timesyncLogFile_.is_open()) {
-            this->timesyncLogFile_ << "nodeName,request_time,send_time,response_time,now_time,offset_ns\n";
+            this->timesyncLogFile_ << "nodeName,T0,T1=T2,T3,(T3-T0)/2 (ns),^T0-T0(offset ns)\n";
+            RCLCPP_INFO(this->get_logger(), "[TimeSyncNode] Log file opened: %s", logFileName.c_str());
         }
         this->correctDuration_ = std::make_shared<rclcpp::Duration>(0, 0);
         this->timeStampType_ = vehicle_interfaces::msg::Header::STAMPTYPE_NO_SYNC;
@@ -267,18 +268,46 @@ public:
                 rclcpp::Time sendTime = response->request_time;
                 if ((nowTime - sendTime).nanoseconds() >  this->timeSyncAccuracy_.count())// If travel time > accuracy, re-sync
                     return false;
+                rclcpp::Duration roundTrip = nowTime - sendTime;
+                rclcpp::Duration delta = rclcpp::Duration::from_nanoseconds(roundTrip.nanoseconds() / 2);
+                rclcpp::Time refTime = rclcpp::Time(response->response_time) - delta;
+
                 rclcpp::Duration offset = refTime - sendTime;
                 std::lock_guard<std::mutex> _logLock(this->logFileLock_);
                 if (this->timesyncLogFile_.is_open()) {
+                    // print
+                    std::ostringstream req_time_str;
+                    req_time_str << std::fixed << std::setprecision(9)
+                                << request->request_time.sec + request->request_time.nanosec / 1e9;
+                    std::string request_time_string = req_time_str.str();
+
+                    std::ostringstream response_time_str;
+                    response_time_str << std::fixed << std::setprecision(9)
+                                    << response->response_time.sec + response->response_time.nanosec / 1e9;
+                    std::string response_time_string = response_time_str.str();
+
+                    std::ostringstream now_time_str;
+                    now_time_str << std::fixed << std::setprecision(9)
+                                << nowTime.seconds();  // rclcpp::Time already in sec + nsec
+                    std::string now_time_string = now_time_str.str();
+
+
+                    std::ostringstream delta_time_str;
+                    delta_time_str << std::fixed << std::setprecision(9)
+                                << delta.nanoseconds();  // rclcpp::Time already in sec + nsec
+                    std::string delta_time_string = delta_time_str.str();
+
+
                     this->timesyncLogFile_
                         << this->clientNode_->get_name() << ","
-                        << request->request_time.seconds() << ","
-                        << sendTime.seconds() << ","
-                        << response->response_time.seconds() << ","
-                        << nowTime.seconds() << ","
+                        << request_time_string << ","    // ✅ 直接使用 std::string
+                        << response_time_string << ","
+                        << now_time_string << ","
+                        << delta_time_string << ","
                         << offset.nanoseconds() << "\n";
+
+                    this->timesyncLogFile_.flush();
                 }
-                rclcpp::Time refTime = (rclcpp::Time)response->response_time - (nowTime - sendTime) * 0.5;
                 this->timeStampType_ = response->response_code;
                 if (this->timeStampType_ == vehicle_interfaces::msg::Header::STAMPTYPE_NO_SYNC)
                     throw vehicle_interfaces::msg::Header::STAMPTYPE_NO_SYNC;
